@@ -20,4 +20,5 @@ if __name__ == "__main__":
     targetname = "tmp.mp3"
     url = "https://www.youtube.com/watch?v=_HxkMKb_EQs"
     GetYoutubeVideo(url, filename)
+    print("get video success")
     print(VideoToMusic(filename, targetname))

@@ -3,6 +3,38 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 name = "pypi"
 
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+
 [packages]
 certifi = "==2019.9.11"
 chardet = "==3.0.4"

@@ -9,7 +9,7 @@ from linebot.models import MessageEvent, TextMessage, TextSendMessage, AudioMess
 from linebot.models import FollowEvent
 
 from fsm import TocMachine
-from utils import send_text_message, send_audio_message, send_flex_message, download_music
+from utils import send_text_message, send_audio_message, send_flex_message, download_music, push_text_message
 
 from crawl.crawl import youtube_crawler
 from music.GetMusic import Cut, GetYoutubeVideo, VideoToMusic
@@ -154,8 +154,8 @@ def webhook_handler():
                     # go to cut music
                     machine.have_music(event)
                     send_text_message(event.reply_token,
-                                    ["音樂總長度為"+str(music_duration)+"秒",
-                                    "請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
+                                    ["音樂總長度為"+str(music_duration)+"秒，請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
+                                    "如果不需要剪歌，請輸入 不用 或 不需要。",
                                     "如果想重新選擇，請輸入 從頭再來一次。"])
                 else:
                     send_text_message(event.reply_token,
@@ -213,30 +213,26 @@ def webhook_handler():
                 music_name -= 1
                 GetYoutubeVideo(video_url[music_name], tmp_video)
                 music_duration = VideoToMusic(tmp_video, tmp_music)
-                send_text_message(event.reply_token,
-                                ["音樂總長度為"+str(music_duration)+"秒",
-                                "請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
+                push_text_message(event.source.user_id,
+                                ["音樂總長度為"+str(int(music_duration))+"秒，請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
                                 "如果不需要剪歌，請輸入 不用 或 不需要。",
                                 "如果想重新選擇，請輸入 從頭再來一次。"])
         elif machine.state == 'cut_music':
             if not isinstance(event, MessageEvent):
-                send_text_message(event.reply_token,
-                                ["音樂總長度為"+str(music_duration)+"秒",
-                                "請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
+                push_text_message(event.source.user_id,
+                                ["音樂總長度為"+str(music_duration)+"秒，請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
                                 "如果不需要剪歌，請輸入 不用 或 不需要。",
                                 "如果想重新選擇，請輸入 從頭再來一次。"])
                 continue
             if not isinstance(event.message, TextMessage):
-                send_text_message(event.reply_token,
-                                ["音樂總長度為"+str(music_duration)+"秒",
-                                "請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
+                push_text_message(event.source.user_id,
+                                ["音樂總長度為"+str(music_duration)+"秒，請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
                                 "如果不需要剪歌，請輸入 不用 或 不需要。",
                                 "如果想重新選擇，請輸入 從頭再來一次。"])
                 continue
             if not isinstance(event.message.text, str):
-                send_text_message(event.reply_token,
-                                ["音樂總長度為"+str(music_duration)+"秒",
-                                "請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
+                push_text_message(event.source.user_id,
+                                ["音樂總長度為"+str(music_duration)+"秒，請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
                                 "如果不需要剪歌，請輸入 不用 或 不需要。",
                                 "如果想重新選擇，請輸入 從頭再來一次。"])
                 continue
@@ -258,9 +254,8 @@ def webhook_handler():
                 end = int(result[1])
             response = machine.set_second(start, end, music_duration)
             if response == 0:
-                send_text_message(event.reply_token,
-                                ["音樂總長度為"+str(music_duration)+"秒",
-                                "請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
+                push_text_message(event.source.user_id,
+                                ["音樂總長度為"+str(music_duration)+"秒，請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
                                 "如果不需要剪歌，請輸入 不用 或 不需要。",
                                 "如果想重新選擇，請輸入 從頭再來一次。"])
             else:

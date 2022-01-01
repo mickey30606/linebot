@@ -9,6 +9,9 @@ channel_access_token = os.getenv("LINE_CHANNEL_ACCESS_TOKEN", None)
 
 
 def send_text_message(reply_token, text):
+    print("send text message")
+    for i in text:
+        print(i)
     line_bot_api = LineBotApi(channel_access_token)
     message = []
     for i in text:
@@ -16,6 +19,16 @@ def send_text_message(reply_token, text):
     line_bot_api.reply_message(reply_token, message)
 
     return "OK"
+
+def push_text_message(user_id, text):
+    line_bot_api = LineBotApi(channel_access_token)
+    message = []
+    for i in text:
+        message.append(TextSendMessage(text=i))
+    line_bot_api.push_message(user_id, message)
+
+    return "OK"
+
 
 def send_audio_message(reply_token, music_url, duration, targetfile, text):
     message = []
