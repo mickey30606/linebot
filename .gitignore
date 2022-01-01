@@ -113,3 +113,4 @@ venv.bak/
 *.mp3
 *.mp4
 *.sh
+*.out

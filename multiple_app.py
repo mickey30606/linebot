@@ -220,7 +220,7 @@ def webhook_handler():
                     user[user_id]['machine'].have_music(event)
                     push_text_message(user_id,
                                     ["音樂總長度為"+str(int(user[user_id]['music_duration']))+"秒",
-                                    "請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
+                                    "請輸入想要剪的秒數範圍，請以半形逗號或半形波浪號做為分隔，例如 20, 100 或是 0 ~ 90",
                                     "如果不需要剪歌，請輸入 不用 或 不需要。",
                                     "如果想重新選擇，請輸入 從頭再來一次。"])
                     user[user_id]['avaliable'] = 1
@@ -275,7 +275,7 @@ def webhook_handler():
                             user[user_id]['music_duration'] = VideoToMusic(user[user_id]['tmp_video'], user[user_id]['tmp_music'])
                             push_text_message(user_id,
                                             ["音樂總長度為"+str(int(user[user_id]['music_duration']))+"秒",
-                                            "請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
+                                            "請輸入想要剪的秒數範圍，請以半形逗號或半形波浪號做為分隔，例如 20, 100 或是 0 ~ 90",
                                             "如果不需要剪歌，請輸入 不用 或 不需要。",
                                             "如果想重新選擇，請輸入 從頭再來一次。"])
                             user[user_id]['avaliable'] = 1
@@ -311,13 +311,19 @@ def webhook_handler():
                         else:
                             result = event.message.text
                             result = result.split(',')
+                            if len(result) == 1:
+                                result = result[0].split('~')
+                            if len(result) == 1:
+                                result = result[0].split('～')
+                            if len(result) == 1:
+                                result = result[0].split('，')
                             try:
                                 start = int(result[0])
                                 end = int(result[1])
                             except ValueError as e:
                                 send_text_message(event.reply_token,
                                                 ["音樂總長度為"+str(int(user[user_id]['music_duration']))+"秒",
-                                                "請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
+                                                "請輸入想要剪的秒數範圍，請以半形逗號或半形波浪號做為分隔，例如 20, 100 或是 0 ~ 90",
                                                 "如果不需要剪歌，請輸入 不用 或 不需要。",
                                                 "如果想重新選擇，請輸入 從頭再來一次。"])
                                 continue
@@ -325,7 +331,7 @@ def webhook_handler():
                         if response == 0:
                             send_text_message(event.reply_token,
                                             ["音樂總長度為"+str(int(user[user_id]['music_duration']))+"秒",
-                                            "請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
+                                            "請輸入想要剪的秒數範圍，請以半形逗號或半形波浪號做為分隔，例如 20, 100 或是 0 ~ 90",
                                             "如果不需要剪歌，請輸入 不用 或 不需要。",
                                             "如果想重新選擇，請輸入 從頭再來一次。"])
                             continue
@@ -343,7 +349,7 @@ def webhook_handler():
                             continue
             send_text_message(event.reply_token,
                             ["音樂總長度為"+str(int(user[user_id]['music_duration']))+"秒",
-                            "請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
+                            "請輸入想要剪的秒數範圍，請以半形逗號或半形波浪號做為分隔，例如 20, 100 或是 0 ~ 90",
                             "如果不需要剪歌，請輸入 不用 或 不需要。",
                             "如果想重新選擇，請輸入 從頭再來一次。"])
 

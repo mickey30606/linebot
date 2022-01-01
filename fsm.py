@@ -10,7 +10,8 @@ class TocMachine(GraphMachine):
     def is_going_to_find_music(self, event):
         result = WS(event.message.text)
         for i in result:
-            if i.lower() == "youtube" or i.lower == "yt":
+            print(i)
+            if i.lower() == "youtube" or i.lower() == "yt":
                 return True
         return False
 

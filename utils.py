@@ -88,7 +88,10 @@ def push_flex_message(user_id, video_title, video_url, video_img, text):
     with open('./flex_message.json') as f:
         data = json.load(f)
 
-    for i in range(0, 3):
+    for j in range(0, 3):
+        i = j
+        if len(video_title) < 3:
+            i = len(video_title) - 1
         print(video_img[i])
         print(video_url[i])
         print(video_title[i])
