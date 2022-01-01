@@ -1,0 +1,117 @@
+{
+  "type": "bubble",
+  "body": {
+    "type": "box",
+    "layout": "vertical",
+    "contents": [
+      {
+        "type": "box",
+        "layout": "vertical",
+        "contents": [
+          {
+            "type": "text",
+            "text": "Brown Cafe",
+            "weight": "bold",
+            "size": "xl",
+            "action": {
+              "type": "uri",
+              "label": "video_url",
+              "uri": "http://linecorp.com/"
+            }
+          },
+          {
+            "type": "image",
+            "url": "https://scdn.line-apps.com/n/channel_devcenter/img/fx/01_1_cafe.png",
+            "size": "full",
+            "aspectRatio": "20:13",
+            "aspectMode": "cover",
+            "action": {
+              "type": "uri",
+              "uri": "http://linecorp.com/"
+            }
+          },
+          {
+            "type": "button",
+            "action": {
+              "type": "message",
+              "label": "選這個",
+              "text": "1"
+            }
+          }
+        ]
+      },
+      {
+        "type": "box",
+        "layout": "vertical",
+        "contents": [
+          {
+            "type": "text",
+            "text": "Brown Cafe",
+            "weight": "bold",
+            "size": "xl",
+            "action": {
+              "type": "uri",
+              "label": "video_url",
+              "uri": "http://linecorp.com/"
+            }
+          },
+          {
+            "type": "image",
+            "url": "https://scdn.line-apps.com/n/channel_devcenter/img/fx/01_1_cafe.png",
+            "size": "full",
+            "aspectRatio": "20:13",
+            "aspectMode": "cover",
+            "action": {
+              "type": "uri",
+              "uri": "http://linecorp.com/"
+            }
+          },
+          {
+            "type": "button",
+            "action": {
+              "type": "message",
+              "label": "選這個",
+              "text": "2"
+            }
+          }
+        ]
+      },
+      {
+        "type": "box",
+        "layout": "vertical",
+        "contents": [
+          {
+            "type": "text",
+            "text": "Brown Cafe",
+            "weight": "bold",
+            "size": "xl",
+            "action": {
+              "type": "uri",
+              "label": "video_url",
+              "uri": "http://linecorp.com/"
+            }
+          },
+          {
+            "type": "image",
+            "url": "https://scdn.line-apps.com/n/channel_devcenter/img/fx/01_1_cafe.png",
+            "size": "full",
+            "aspectRatio": "20:13",
+            "aspectMode": "cover",
+            "action": {
+              "type": "uri",
+              "uri": "http://linecorp.com/"
+            }
+          },
+          {
+            "type": "button",
+            "action": {
+              "type": "message",
+              "label": "選這個",
+              "text": "3"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

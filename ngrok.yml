@@ -1,0 +1,8 @@
+authtoken: 1zja9dz8wB8mn2FFKoLa4pYZSNB_4DyqbkRpgTvNzLGJsDfze
+tunnels:
+  myapp-http:
+    addr: 8000
+    proto: http
+  mypp-https:
+    addr: file:///Users/mickey30606/develop/linebot/
+    proto: http

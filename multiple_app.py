@@ -16,53 +16,64 @@ from music.GetMusic import Cut, GetYoutubeVideo, VideoToMusic
 
 load_dotenv() # use to load .env file
 
-machine = TocMachine(
-    states=["init_state", "find_music", "cut_music", "final_state"],
-    transitions=[
-        {
-            "trigger": "youtube",
-            "source": "init_state",
-            "dest": "find_music",
-            "conditions": "is_going_to_find_music",
-        },
-        {
-            "trigger": "have_music",
-            "source": "init_state",
-            "dest": "cut_music",
-        },
-        {
-            "trigger": "choose_number",
-            "source": "find_music",
-            "dest": "cut_music",
-            "conditions": "is_going_to_cut_music",
-        },
-        {
-            "trigger": "set_second",
-            "source": "cut_music",
-            "dest": "final_state",
-            "conditions": "is_going_to_final_state"
-        },
-        {   "trigger": "go_back",
-            "source": ["find_music", "cut_music"],
-            "dest": "init_state",
-            "conditions": "is_going_go_back",
-        },
-        {
-            "trigger": "final_back",
-            "source": "final_state",
-            "dest": "init_state"
-        },
-    ],
-    initial="init_state",
-    auto_transitions=False,
-    show_conditions=True,
-)
+user = dict()
 
-video_title = []
-video_url = []
-video_img = []
-music_name = 1
-music_duration = 0
+def create_user(user_id):
+    global user
+    user[user_id] = dict()
+    user[user_id]['video_title'] = []
+    user[user_id]['video_url'] = []
+    user[user_id]['video_img'] = []
+    user[user_id]['music_name'] = 1
+    user[user_id]['music_duration'] = 0
+    user[user_id]['tmp_video'] = "music/"+str(user_id)+"tmp.mp4"
+    user[user_id]['tmp_music'] = "music/"+str(user_id)+"tmp.mp3"
+    user[user_id]['output_music'] = "music/"+str(user_id)+"output.mp3"
+    user[user_id]['machine'] = TocMachine(
+        states=["init_state", "find_music", "cut_music", "final_state"],
+        transitions=[
+            {
+                "trigger": "youtube",
+                "source": "init_state",
+                "dest": "find_music",
+                "conditions": "is_going_to_find_music",
+            },
+            {
+                "trigger": "have_music",
+                "source": "init_state",
+                "dest": "cut_music",
+            },
+            {
+                "trigger": "choose_number",
+                "source": "find_music",
+                "dest": "cut_music",
+                "conditions": "is_going_to_cut_music",
+            },
+            {
+                "trigger": "set_second",
+                "source": "cut_music",
+                "dest": "final_state",
+                "conditions": "is_going_to_final_state"
+            },
+            {   "trigger": "go_back",
+                "source": ["find_music", "cut_music"],
+                "dest": "init_state",
+                "conditions": "is_going_go_back",
+            },
+            {
+                "trigger": "final_back",
+                "source": "final_state",
+                "dest": "init_state"
+            },
+        ],
+        initial="init_state",
+        auto_transitions=False,
+        show_conditions=True,
+    )
+    return
+
+
+
 
 file_url = os.getenv("FILE_HTTP", None)
 print(file_url)
@@ -114,14 +125,7 @@ def callback():
 
 @app.route("/webhook", methods=["POST"])
 def webhook_handler():
-    global video_title
-    global video_url
-    global video_img
-    global music_name
-    global music_duration
-    tmp_video = "music/tmp.mp4"
-    tmp_music = "music/tmp.mp3"
-    output_music = "music/output.mp3"
+    global user
     print("in webhook")
     signature = request.headers["X-Line-Signature"]
     # get request body as text
@@ -136,25 +140,31 @@ def webhook_handler():
 
     # if event is MessageEvent and message is TextMessage, then echo text
     for event in events:
-        if machine.state == 'init_state':
-            music_name = 1
-            music_duration = 0
-            video_img = []
-            video_url = []
-            video_title = []
+        user_id = event.source.user_id
+        if user.get(user_id, 0) == 0:
+            create_user(user_id)
+            print("create user success")
+        if user[user_id]['machine'].state == 'init_state':
+#            del user[event.source.user_id]
+#            create_user(event.source.user_id)
+            user[user_id]['music_name'] = 1
+            user[user_id]['music_duration'] = 0
+            user[user_id]['video_img'] = []
+            user[user_id]['video_url'] = []
+            user[user_id]['video_title'] = []
             if not isinstance(event, MessageEvent):
                 send_text_message(event.reply_token,
                                   ["如果需要使用 youtube 尋找音樂請輸入 YouTube ，也可以自行上傳音樂。"])
                 continue
             if isinstance(event.message, AudioMessage):
                 # special go to cut music
-                music_duration = event.message.duration / 1000.0
+                user[user_id]['music_duration'] = event.message.duration / 1000.0
                 if event.message.content_provider.type =="line":
-                    download_music(tmp_music, event.message.id)
+                    download_music(user[user_id]['tmp_music'], event.message.id)
                     # go to cut music
-                    machine.have_music(event)
+                    user[user_id]['machine'].have_music(event)
                     send_text_message(event.reply_token,
-                                    ["音樂總長度為"+str(music_duration)+"秒",
+                                    ["音樂總長度為"+str(user[user_id]['music_duration'])+"秒",
                                     "請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
                                     "如果想重新選擇，請輸入 從頭再來一次。"])
                 else:
@@ -170,7 +180,7 @@ def webhook_handler():
                     send_text_message(event.reply_token,
                                     ["如果需要使用 youtube 尋找音樂請輸入 YouTube ，也可以自行上傳音樂。"])
                     continue
-                response = machine.youtube(event)
+                response = user[user_id]['machine'].youtube(event)
                 if response == False:
                     send_text_message(event.reply_token,
                                     ["如果需要使用 youtube 尋找音樂請輸入 YouTube ，也可以自行上傳音樂。"])
@@ -178,7 +188,7 @@ def webhook_handler():
                     send_text_message(event.reply_token,
                                     ["請輸入想尋找的音樂名稱，伺服器將從 youtube 上搜尋",
                                     "如果想重新選擇，請輸入 從頭再來一次。"])
-        elif machine.state == 'find_music':
+        elif user[user_id]['machine'].state == 'find_music':
             if not isinstance(event, MessageEvent):
                 send_text_message(event.reply_token,
                                   ["請輸入想尋找的音樂名稱，伺服器將從 youtube 上搜尋",
@@ -194,53 +204,53 @@ def webhook_handler():
                                   ["請輸入想尋找的音樂名稱，伺服器將從 youtube 上搜尋",
                                    "如果想重新選擇，請輸入 從頭再來一次。"])
                 continue
-            response = machine.go_back(event)
+            response = user[user_id]['machine'].go_back(event)
             if response:
                 send_text_message(event.reply_token,
                                   ["如果需要使用 youtube 尋找音樂請輸入 YouTube ，也可以自行上傳音樂。"])
                 continue
-            response = machine.choose_number(event)
+            response = user[user_id]['machine'].choose_number(event)
             if response == 0:
-                music_name = event.message.text
+                user[user_id]['music_name'] = event.message.text
                 # 爬蟲
-                video_title, video_url, video_img = youtube_crawler(music_name)
-                send_flex_message(event.reply_token, video_title, video_url, video_img,
+                user[user_id]['video_title'], user[user_id]['video_url'], user[user_id]['video_img'] = youtube_crawler(user[user_id]['music_name'])
+                send_flex_message(event.reply_token, user[user_id]['video_title'], user[user_id]['video_url'], user[user_id]['video_img'],
                                   ["選擇後需要等待一小段時間，伺服器會自動幫你下載音樂喔～",
                                    "如果想重新選擇，請輸入 從頭再來一次。"])
-                music_name = -1
+                user[user_id]['music_name'] = -1
             else:
-                music_name = int(event.message.text)
-                music_name -= 1
-                GetYoutubeVideo(video_url[music_name], tmp_video)
-                music_duration = VideoToMusic(tmp_video, tmp_music)
+                user[user_id]['music_name'] = int(event.message.text)
+                user[user_id]['music_name'] -= 1
+                GetYoutubeVideo(user[user_id]['video_url'][user[user_id]['music_name']], user[user_id]['tmp_video'])
+                user[user_id]['music_duration'] = VideoToMusic(user[user_id]['tmp_video'], user[user_id]['tmp_music'])
                 send_text_message(event.reply_token,
-                                ["音樂總長度為"+str(music_duration)+"秒",
+                                ["音樂總長度為"+str(user[user_id]['music_duration'])+"秒",
                                 "請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
                                 "如果不需要剪歌，請輸入 不用 或 不需要。",
                                 "如果想重新選擇，請輸入 從頭再來一次。"])
-        elif machine.state == 'cut_music':
+        elif user[user_id]['machine'].state == 'cut_music':
             if not isinstance(event, MessageEvent):
                 send_text_message(event.reply_token,
-                                ["音樂總長度為"+str(music_duration)+"秒",
+                                ["音樂總長度為"+str(user[user_id]['music_duration'])+"秒",
                                 "請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
                                 "如果不需要剪歌，請輸入 不用 或 不需要。",
                                 "如果想重新選擇，請輸入 從頭再來一次。"])
                 continue
             if not isinstance(event.message, TextMessage):
                 send_text_message(event.reply_token,
-                                ["音樂總長度為"+str(music_duration)+"秒",
+                                ["音樂總長度為"+str(user[user_id]['music_duration'])+"秒",
                                 "請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
                                 "如果不需要剪歌，請輸入 不用 或 不需要。",
                                 "如果想重新選擇，請輸入 從頭再來一次。"])
                 continue
             if not isinstance(event.message.text, str):
                 send_text_message(event.reply_token,
-                                ["音樂總長度為"+str(music_duration)+"秒",
+                                ["音樂總長度為"+str(user[user_id]['music_duration'])+"秒",
                                 "請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
                                 "如果不需要剪歌，請輸入 不用 或 不需要。",
                                 "如果想重新選擇，請輸入 從頭再來一次。"])
                 continue
-            response = machine.go_back(event)
+            response = user[user_id]['machine'].go_back(event)
             if response:
                 send_text_message(event.reply_token,
                                   ["如果需要使用 youtube 尋找音樂請輸入 YouTube ，也可以自行上傳音樂。"])
@@ -250,33 +260,34 @@ def webhook_handler():
             end = 0
             if event.message.text == "不用" or event.message.text == "不需要":
                 start = 0
-                end = music_duration
+                end = user[user_id]['music_duration']
             else:
                 result = event.message.text
                 result = result.split(',')
                 start = int(result[0])
                 end = int(result[1])
-            response = machine.set_second(start, end, music_duration)
+            response = user[user_id]['machine'].set_second(start, end, user[user_id]['music_duration'])
             if response == 0:
                 send_text_message(event.reply_token,
-                                ["音樂總長度為"+str(music_duration)+"秒",
+                                ["音樂總長度為"+str(user[user_id]['music_duration'])+"秒",
                                 "請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
                                 "如果不需要剪歌，請輸入 不用 或 不需要。",
                                 "如果想重新選擇，請輸入 從頭再來一次。"])
             else:
                 # 剪音樂
-                Cut(tmp_music, start*1000, end*1000, output_music)
-                music_duration = end- start
-                send_audio_message(event.reply_token, file_url, music_duration, output_music,
+                Cut(user[user_id]['tmp_music'], start*1000, end*1000, user[user_id]['output_music'])
+                user[user_id]['music_duration'] = end- start
+                send_audio_message(event.reply_token, file_url, user[user_id]['music_duration'], user[user_id]['output_music'],
                                    ["如果需要使用 youtube 尋找音樂請輸入 YouTube ，也可以自行上傳音樂。"])
-                machine.final_back()
-        elif machine.state == 'final_state':
+                user[user_id]['machine'].final_back()
+                del user[user_id]
+        elif user[user_id]['machine'].state == 'final_state':
             send_text_message(event.reply_token, "I'm in final state!!!")
         else:
             send_text_message(event.reply_token, "啥東西？")
 
-        print(f"\nFSM STATE: {machine.state}")
-#        response = machine.advance(event)
+        print(f"\nFSM STATE: {user[user_id]['machine'].state}")
+#        response = user[user_id]['machine'].advance(event)
 #        if response == False:
 #            send_audio_message(event.reply_token, "./music/tmp.mp3")
 #            send_text_message(event.reply_token, "Not Entering any State")
@@ -284,10 +295,10 @@ def webhook_handler():
     return "OK"
 
 
-@app.route("/show-fsm", methods=["GET"])
-def show_fsm():
-    machine.get_graph().draw("fsm.png", prog="dot", format="png")
-    return send_file("fsm.png", mimetype="image/png")
+#@app.route("/show-fsm", methods=["GET"])
+#def show_fsm():
+#    machine.get_graph().draw("fsm.png", prog="dot", format="png")
+#    return send_file("fsm.png", mimetype="image/png")
 
 
 if __name__ == "__main__":

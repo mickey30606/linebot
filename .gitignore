@@ -108,3 +108,7 @@ venv.bak/
 
 # vscode
 .vscode/
+
+# user
+*.mp3
+*.mp4

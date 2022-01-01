@@ -1,0 +1,23 @@
+{
+  "type": "bubble",
+  "body": {
+    "type": "box",
+    "layout": "vertical",
+    "contents": [
+      {
+        "type": "text",
+        "text": "Download Link",
+        "weight": "bold",
+        "size": "sm",
+        "color": "#FFFFFF",
+        "align": "center",
+        "action": {
+          "type": "uri",
+          "label": "action",
+          "uri": "http://linecorp.com/"
+        }
+      }
+    ],
+    "backgroundColor": "#000000"
+  }
+}
