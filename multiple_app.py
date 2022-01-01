@@ -9,7 +9,7 @@ from linebot.models import MessageEvent, TextMessage, TextSendMessage, AudioMess
 from linebot.models import FollowEvent
 
 from fsm import TocMachine
-from utils import send_text_message, send_audio_message, send_flex_message, download_music
+from utils import send_text_message, send_audio_message, send_flex_message, download_music, push_text_message, push_flex_message, push_audio_message
 
 from crawl.crawl import youtube_crawler
 from music.GetMusic import Cut, GetYoutubeVideo, VideoToMusic
@@ -17,6 +17,48 @@ from music.GetMusic import Cut, GetYoutubeVideo, VideoToMusic
 load_dotenv() # use to load .env file
 
 user = dict()
+
+fake_machine = TocMachine(
+    states=["init_state", "find_music", "cut_music", "final_state"],
+    transitions=[
+        {
+            "trigger": "youtube",
+            "source": "init_state",
+            "dest": "find_music",
+            "conditions": "is_going_to_find_music",
+        },
+        {
+            "trigger": "have_music",
+            "source": "init_state",
+            "dest": "cut_music",
+        },
+        {
+            "trigger": "choose_number",
+            "source": "find_music",
+            "dest": "cut_music",
+            "conditions": "is_going_to_cut_music",
+        },
+        {
+            "trigger": "set_second",
+            "source": "cut_music",
+            "dest": "final_state",
+            "conditions": "is_going_to_final_state"
+        },
+        {   "trigger": "go_back",
+            "source": ["find_music", "cut_music"],
+            "dest": "init_state",
+            "conditions": "is_going_go_back",
+        },
+        {
+            "trigger": "final_back",
+            "source": "final_state",
+            "dest": "init_state"
+        },
+    ],
+    initial="init_state",
+    auto_transitions=False,
+    show_conditions=True,
+)
 
 def create_user(user_id):
     global user
@@ -144,6 +186,9 @@ def webhook_handler():
         if user.get(user_id, 0) == 0:
             create_user(user_id)
             print("create user success")
+
+        print(f"\nFSM STATE: {user[user_id]['machine'].state}")
+
         if user[user_id]['machine'].state == 'init_state':
 #            del user[event.source.user_id]
 #            create_user(event.source.user_id)
@@ -152,10 +197,6 @@ def webhook_handler():
             user[user_id]['video_img'] = []
             user[user_id]['video_url'] = []
             user[user_id]['video_title'] = []
-            if not isinstance(event, MessageEvent):
-                send_text_message(event.reply_token,
-                                  ["如果需要使用 youtube 尋找音樂請輸入 YouTube ，也可以自行上傳音樂。"])
-                continue
             if isinstance(event.message, AudioMessage):
                 # special go to cut music
                 user[user_id]['music_duration'] = event.message.duration / 1000.0
@@ -167,138 +208,125 @@ def webhook_handler():
                                     ["音樂總長度為"+str(user[user_id]['music_duration'])+"秒",
                                     "請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
                                     "如果想重新選擇，請輸入 從頭再來一次。"])
+                    continue
                 else:
                     send_text_message(event.reply_token,
                                     ["請從本地端上傳音樂！",
                                      "如果需要使用 youtube 尋找音樂請輸入 YouTube ，也可以自行上傳音樂。"])
+                    continue
             else:
-                if not isinstance(event.message, TextMessage):
-                    send_text_message(event.reply_token,
-                                    ["如果需要使用 youtube 尋找音樂請輸入 YouTube ，也可以自行上傳音樂。"])
-                    continue
-                if not isinstance(event.message.text, str):
-                    send_text_message(event.reply_token,
-                                    ["如果需要使用 youtube 尋找音樂請輸入 YouTube ，也可以自行上傳音樂。"])
-                    continue
-                response = user[user_id]['machine'].youtube(event)
-                if response == False:
-                    send_text_message(event.reply_token,
-                                    ["如果需要使用 youtube 尋找音樂請輸入 YouTube ，也可以自行上傳音樂。"])
-                else:
-                    send_text_message(event.reply_token,
-                                    ["請輸入想尋找的音樂名稱，伺服器將從 youtube 上搜尋",
-                                    "如果想重新選擇，請輸入 從頭再來一次。"])
+                if isinstance(event, MessageEvent):
+                    if isinstance(event.message, TextMessage):
+                        if isinstance(event.message.text, str):
+                            response = user[user_id]['machine'].youtube(event)
+                            if response == True:
+                                send_text_message(event.reply_token,
+                                                ["請輸入想尋找的音樂名稱，伺服器將從 youtube 上搜尋",
+                                                "如果想重新選擇，請輸入 從頭再來一次。"])
+                                continue
+
+            send_text_message(event.reply_token,
+                            ["如果需要使用 youtube 尋找音樂請輸入 YouTube ，也可以自行上傳音樂。"])
         elif user[user_id]['machine'].state == 'find_music':
-            if not isinstance(event, MessageEvent):
-                send_text_message(event.reply_token,
-                                  ["請輸入想尋找的音樂名稱，伺服器將從 youtube 上搜尋",
-                                   "如果想重新選擇，請輸入 從頭再來一次。"])
-                continue
-            if not isinstance(event.message, TextMessage):
-                send_text_message(event.reply_token,
-                                  ["請輸入想尋找的音樂名稱，伺服器將從 youtube 上搜尋",
-                                   "如果想重新選擇，請輸入 從頭再來一次。"])
-                continue
-            if not isinstance(event.message.text, str):
-                send_text_message(event.reply_token,
-                                  ["請輸入想尋找的音樂名稱，伺服器將從 youtube 上搜尋",
-                                   "如果想重新選擇，請輸入 從頭再來一次。"])
-                continue
-            response = user[user_id]['machine'].go_back(event)
-            if response:
-                send_text_message(event.reply_token,
-                                  ["如果需要使用 youtube 尋找音樂請輸入 YouTube ，也可以自行上傳音樂。"])
-                continue
-            response = user[user_id]['machine'].choose_number(event)
-            if response == 0:
-                user[user_id]['music_name'] = event.message.text
-                # 爬蟲
-                user[user_id]['video_title'], user[user_id]['video_url'], user[user_id]['video_img'] = youtube_crawler(user[user_id]['music_name'])
-                send_flex_message(event.reply_token, user[user_id]['video_title'], user[user_id]['video_url'], user[user_id]['video_img'],
-                                  ["選擇後需要等待一小段時間，伺服器會自動幫你下載音樂喔～",
-                                   "如果想重新選擇，請輸入 從頭再來一次。"])
-                user[user_id]['music_name'] = -1
-            else:
-                user[user_id]['music_name'] = int(event.message.text)
-                user[user_id]['music_name'] -= 1
-                GetYoutubeVideo(user[user_id]['video_url'][user[user_id]['music_name']], user[user_id]['tmp_video'])
-                user[user_id]['music_duration'] = VideoToMusic(user[user_id]['tmp_video'], user[user_id]['tmp_music'])
-                send_text_message(event.reply_token,
-                                ["音樂總長度為"+str(user[user_id]['music_duration'])+"秒",
-                                "請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
-                                "如果不需要剪歌，請輸入 不用 或 不需要。",
+            if isinstance(event, MessageEvent):
+                if isinstance(event.message, TextMessage):
+                    if isinstance(event.message.text, str):
+                        response = user[user_id]['machine'].go_back(event)
+                        if response:
+                            send_text_message(event.reply_token,
+                                            ["如果需要使用 youtube 尋找音樂請輸入 YouTube ，也可以自行上傳音樂。"])
+                            continue
+                        response = user[user_id]['machine'].choose_number(event)
+                        if response == 0:
+                            user[user_id]['music_name'] = event.message.text
+                            # 爬蟲
+                            send_text_message(event.reply_token, ["音樂搜尋中..."])
+                            user[user_id]['video_title'], user[user_id]['video_url'], user[user_id]['video_img'] = youtube_crawler(user[user_id]['music_name'])
+                            push_flex_message(event.source.user_id, user[user_id]['video_title'], user[user_id]['video_url'], user[user_id]['video_img'],
+                                            ["選擇後需要等待一小段時間，伺服器會自動幫你下載音樂喔～",
+                                            "如果想重新選擇，請輸入 從頭再來一次。"])
+                            user[user_id]['music_name'] = -1
+                            continue
+                        else:
+                            user[user_id]['music_name'] = int(event.message.text)
+                            user[user_id]['music_name'] -= 1
+                            send_text_message(event.reply_token, ["影片檔案下載中..."])
+                            GetYoutubeVideo(user[user_id]['video_url'][user[user_id]['music_name']], user[user_id]['tmp_video'])
+                            push_text_message(user_id, ["轉換為音檔中..."])
+                            user[user_id]['music_duration'] = VideoToMusic(user[user_id]['tmp_video'], user[user_id]['tmp_music'])
+                            push_text_message(event.reply_token,
+                                            ["音樂總長度為"+str(user[user_id]['music_duration'])+"秒",
+                                            "請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
+                                            "如果不需要剪歌，請輸入 不用 或 不需要。",
+                                            "如果想重新選擇，請輸入 從頭再來一次。"])
+                            continue
+            send_text_message(event.reply_token,
+                                ["請輸入想尋找的音樂名稱，伺服器將從 youtube 上搜尋",
                                 "如果想重新選擇，請輸入 從頭再來一次。"])
         elif user[user_id]['machine'].state == 'cut_music':
-            if not isinstance(event, MessageEvent):
-                send_text_message(event.reply_token,
-                                ["音樂總長度為"+str(user[user_id]['music_duration'])+"秒",
-                                "請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
-                                "如果不需要剪歌，請輸入 不用 或 不需要。",
-                                "如果想重新選擇，請輸入 從頭再來一次。"])
-                continue
-            if not isinstance(event.message, TextMessage):
-                send_text_message(event.reply_token,
-                                ["音樂總長度為"+str(user[user_id]['music_duration'])+"秒",
-                                "請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
-                                "如果不需要剪歌，請輸入 不用 或 不需要。",
-                                "如果想重新選擇，請輸入 從頭再來一次。"])
-                continue
-            if not isinstance(event.message.text, str):
-                send_text_message(event.reply_token,
-                                ["音樂總長度為"+str(user[user_id]['music_duration'])+"秒",
-                                "請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
-                                "如果不需要剪歌，請輸入 不用 或 不需要。",
-                                "如果想重新選擇，請輸入 從頭再來一次。"])
-                continue
-            response = user[user_id]['machine'].go_back(event)
-            if response:
-                send_text_message(event.reply_token,
-                                  ["如果需要使用 youtube 尋找音樂請輸入 YouTube ，也可以自行上傳音樂。"])
-                continue
+            if isinstance(event, MessageEvent):
+                if isinstance(event.message, TextMessage):
+                    if isinstance(event.message.text, str):
+                        response = user[user_id]['machine'].go_back(event)
+                        if response:
+                            send_text_message(event.reply_token,
+                                            ["如果需要使用 youtube 尋找音樂請輸入 YouTube ，也可以自行上傳音樂。"])
+                            continue
 
-            start = 0
-            end = 0
-            if event.message.text == "不用" or event.message.text == "不需要":
-                start = 0
-                end = user[user_id]['music_duration']
-            else:
-                result = event.message.text
-                result = result.split(',')
-                start = int(result[0])
-                end = int(result[1])
-            response = user[user_id]['machine'].set_second(start, end, user[user_id]['music_duration'])
-            if response == 0:
-                send_text_message(event.reply_token,
-                                ["音樂總長度為"+str(user[user_id]['music_duration'])+"秒",
-                                "請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
-                                "如果不需要剪歌，請輸入 不用 或 不需要。",
-                                "如果想重新選擇，請輸入 從頭再來一次。"])
-            else:
-                # 剪音樂
-                Cut(user[user_id]['tmp_music'], start*1000, end*1000, user[user_id]['output_music'])
-                user[user_id]['music_duration'] = end- start
-                send_audio_message(event.reply_token, file_url, user[user_id]['music_duration'], user[user_id]['output_music'],
-                                   ["如果需要使用 youtube 尋找音樂請輸入 YouTube ，也可以自行上傳音樂。"])
-                user[user_id]['machine'].final_back()
-                del user[user_id]
+                        start = 0
+                        end = 0
+                        if event.message.text == "不用" or event.message.text == "不需要":
+                            start = 0
+                            end = user[user_id]['music_duration']
+                        else:
+                            result = event.message.text
+                            result = result.split(',')
+                            try:
+                                start = int(result[0])
+                                end = int(result[1])
+                            except ValueError as e:
+                                send_text_message(event.reply_token,
+                                                ["音樂總長度為"+str(user[user_id]['music_duration'])+"秒",
+                                                "請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
+                                                "如果不需要剪歌，請輸入 不用 或 不需要。",
+                                                "如果想重新選擇，請輸入 從頭再來一次。"])
+                                continue
+                        response = user[user_id]['machine'].set_second(start, end, user[user_id]['music_duration'])
+                        if response == 0:
+                            send_text_message(event.reply_token,
+                                            ["音樂總長度為"+str(user[user_id]['music_duration'])+"秒",
+                                            "請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
+                                            "如果不需要剪歌，請輸入 不用 或 不需要。",
+                                            "如果想重新選擇，請輸入 從頭再來一次。"])
+                            continue
+                        else:
+                            send_text_message(event.reply_token, ["進行中，請稍等..."])
+                            # 剪音樂
+                            Cut(user[user_id]['tmp_music'], start*1000, end*1000, user[user_id]['output_music'])
+                            user[user_id]['music_duration'] = end- start
+                            push_audio_message(event.reply_token, file_url, user[user_id]['music_duration'], user[user_id]['output_music'],
+                                            ["如果需要使用 youtube 尋找音樂請輸入 YouTube ，也可以自行上傳音樂。"])
+                            user[user_id]['machine'].final_back()
+                            del user[user_id]
+                            continue
+            send_text_message(event.reply_token,
+                            ["音樂總長度為"+str(user[user_id]['music_duration'])+"秒",
+                            "請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
+                            "如果不需要剪歌，請輸入 不用 或 不需要。",
+                            "如果想重新選擇，請輸入 從頭再來一次。"])
+
         elif user[user_id]['machine'].state == 'final_state':
             send_text_message(event.reply_token, "I'm in final state!!!")
         else:
             send_text_message(event.reply_token, "啥東西？")
 
-        print(f"\nFSM STATE: {user[user_id]['machine'].state}")
-#        response = user[user_id]['machine'].advance(event)
-#        if response == False:
-#            send_audio_message(event.reply_token, "./music/tmp.mp3")
-#            send_text_message(event.reply_token, "Not Entering any State")
-#            send_flex_message(event.reply_token)
     return "OK"
 
 
-#@app.route("/show-fsm", methods=["GET"])
-#def show_fsm():
-#    machine.get_graph().draw("fsm.png", prog="dot", format="png")
-#    return send_file("fsm.png", mimetype="image/png")
+@app.route("/show-fsm", methods=["GET"])
+def show_fsm():
+    fake_machine.get_graph().draw("fsm.png", prog="dot", format="png")
+    return send_file("fsm.png", mimetype="image/png")
 
 
 if __name__ == "__main__":
