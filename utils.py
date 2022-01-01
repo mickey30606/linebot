@@ -102,11 +102,12 @@ def push_flex_message(user_id, video_title, video_url, video_img, text):
         message.append(TextSendMessage(text=i))
     # flex_message = FlexSendMessage(alt_text='hello', contents=data)
     line_bot_api = LineBotApi(channel_access_token)
-    line_bot_api.push(user_id, message)
+    line_bot_api.push_message(user_id, message)
 
     return "OK"
 
 def download_music(targetfile, message_id):
+    targetfile = "./music/"+targetfile
     line_bot_api = LineBotApi(channel_access_token)
     print(message_id)
     message_content = line_bot_api.get_message_content(message_id)

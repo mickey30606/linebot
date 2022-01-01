@@ -112,3 +112,4 @@ venv.bak/
 # user
 *.mp3
 *.mp4
+*.sh

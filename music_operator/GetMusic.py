@@ -3,13 +3,18 @@ from moviepy.editor import *
 from pydub import AudioSegment
 
 def Cut(originfile, start, end, targetfile):
+    originfile = "./music/"+originfile
+    targetfile = "./music/"+targetfile
     song = AudioSegment.from_mp3(originfile)
     song[start:end].export(targetfile)
 
 def GetYoutubeVideo(url, filename):
+    filename = "./music/"+filename
     YouTube(url).streams.get_highest_resolution().download(filename=filename)
 
 def VideoToMusic(filename, targetname):
+    filename = "./music/"+filename
+    targetname = "./music/"+targetname
     video = VideoFileClip(filename)
     video.audio.write_audiofile(targetname)
     sound = AudioSegment.from_mp3(targetname)

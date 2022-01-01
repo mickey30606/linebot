@@ -12,7 +12,7 @@ from fsm import TocMachine
 from utils import send_text_message, send_audio_message, send_flex_message, download_music, push_text_message, push_flex_message, push_audio_message
 
 from crawl.crawl import youtube_crawler
-from music.GetMusic import Cut, GetYoutubeVideo, VideoToMusic
+from music_operator.GetMusic import Cut, GetYoutubeVideo, VideoToMusic
 
 load_dotenv() # use to load .env file
 
@@ -63,14 +63,18 @@ fake_machine = TocMachine(
 def create_user(user_id):
     global user
     user[user_id] = dict()
+    user[user_id]['avaliable'] = 1
     user[user_id]['video_title'] = []
     user[user_id]['video_url'] = []
     user[user_id]['video_img'] = []
     user[user_id]['music_name'] = 1
     user[user_id]['music_duration'] = 0
-    user[user_id]['tmp_video'] = "music/"+str(user_id)+"tmp.mp4"
-    user[user_id]['tmp_music'] = "music/"+str(user_id)+"tmp.mp3"
-    user[user_id]['output_music'] = "music/"+str(user_id)+"output.mp3"
+    #user[user_id]['tmp_video'] = "music/"+str(user_id)+"tmp.mp4"
+    #user[user_id]['tmp_music'] = "music/"+str(user_id)+"tmp.mp3"
+    #user[user_id]['output_music'] = "music/"+str(user_id)+"output.mp3"
+    user[user_id]['tmp_video'] = str(user_id)+"tmp.mp4"
+    user[user_id]['tmp_music'] = str(user_id)+"tmp.mp3"
+    user[user_id]['output_music'] = str(user_id)+"output.mp3"
     user[user_id]['machine'] = TocMachine(
         states=["init_state", "find_music", "cut_music", "final_state"],
         transitions=[
@@ -182,10 +186,18 @@ def webhook_handler():
 
     # if event is MessageEvent and message is TextMessage, then echo text
     for event in events:
+        if isinstance(event , FollowEvent):
+            send_text_message(event.reply_token,
+                            ["如果需要使用 youtube 尋找音樂請輸入 YouTube ，也可以自行上傳音樂(電腦版限定)。"])
+            continue
         user_id = event.source.user_id
         if user.get(user_id, 0) == 0:
             create_user(user_id)
             print("create user success")
+
+        if user[user_id]['avaliable'] == 0:
+            send_text_message(event.reply_token, ["快好了拉，不要催！"])
+            continue
 
         print(f"\nFSM STATE: {user[user_id]['machine'].state}")
 
@@ -201,13 +213,17 @@ def webhook_handler():
                 # special go to cut music
                 user[user_id]['music_duration'] = event.message.duration / 1000.0
                 if event.message.content_provider.type =="line":
+                    user[user_id]['avaliable'] = 0
+                    send_text_message(event.reply_token, ["下載音樂中..."])
                     download_music(user[user_id]['tmp_music'], event.message.id)
                     # go to cut music
                     user[user_id]['machine'].have_music(event)
-                    send_text_message(event.reply_token,
-                                    ["音樂總長度為"+str(user[user_id]['music_duration'])+"秒",
+                    push_text_message(user_id,
+                                    ["音樂總長度為"+str(int(user[user_id]['music_duration']))+"秒",
                                     "請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
+                                    "如果不需要剪歌，請輸入 不用 或 不需要。",
                                     "如果想重新選擇，請輸入 從頭再來一次。"])
+                    user[user_id]['avaliable'] = 1
                     continue
                 else:
                     send_text_message(event.reply_token,
@@ -226,7 +242,7 @@ def webhook_handler():
                                 continue
 
             send_text_message(event.reply_token,
-                            ["如果需要使用 youtube 尋找音樂請輸入 YouTube ，也可以自行上傳音樂。"])
+                            ["如果需要使用 youtube 尋找音樂請輸入 YouTube ，也可以自行上傳音樂(電腦版限定)。"])
         elif user[user_id]['machine'].state == 'find_music':
             if isinstance(event, MessageEvent):
                 if isinstance(event.message, TextMessage):
@@ -240,25 +256,29 @@ def webhook_handler():
                         if response == 0:
                             user[user_id]['music_name'] = event.message.text
                             # 爬蟲
+                            user[user_id]['avaliable'] = 0
                             send_text_message(event.reply_token, ["音樂搜尋中..."])
                             user[user_id]['video_title'], user[user_id]['video_url'], user[user_id]['video_img'] = youtube_crawler(user[user_id]['music_name'])
-                            push_flex_message(event.source.user_id, user[user_id]['video_title'], user[user_id]['video_url'], user[user_id]['video_img'],
+                            push_flex_message(user_id, user[user_id]['video_title'], user[user_id]['video_url'], user[user_id]['video_img'],
                                             ["選擇後需要等待一小段時間，伺服器會自動幫你下載音樂喔～",
                                             "如果想重新選擇，請輸入 從頭再來一次。"])
+                            user[user_id]['avaliable'] = 1
                             user[user_id]['music_name'] = -1
                             continue
                         else:
                             user[user_id]['music_name'] = int(event.message.text)
                             user[user_id]['music_name'] -= 1
+                            user[user_id]['avaliable'] = 0
                             send_text_message(event.reply_token, ["影片檔案下載中..."])
                             GetYoutubeVideo(user[user_id]['video_url'][user[user_id]['music_name']], user[user_id]['tmp_video'])
                             push_text_message(user_id, ["轉換為音檔中..."])
                             user[user_id]['music_duration'] = VideoToMusic(user[user_id]['tmp_video'], user[user_id]['tmp_music'])
-                            push_text_message(event.reply_token,
-                                            ["音樂總長度為"+str(user[user_id]['music_duration'])+"秒",
+                            push_text_message(user_id,
+                                            ["音樂總長度為"+str(int(user[user_id]['music_duration']))+"秒",
                                             "請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
                                             "如果不需要剪歌，請輸入 不用 或 不需要。",
                                             "如果想重新選擇，請輸入 從頭再來一次。"])
+                            user[user_id]['avaliable'] = 1
                             continue
             send_text_message(event.reply_token,
                                 ["請輸入想尋找的音樂名稱，伺服器將從 youtube 上搜尋",
@@ -276,8 +296,18 @@ def webhook_handler():
                         start = 0
                         end = 0
                         if event.message.text == "不用" or event.message.text == "不需要":
+                            send_text_message(event.reply_token, ["處理中..."])
+                            user[user_id]['avaliable'] = 0
                             start = 0
                             end = user[user_id]['music_duration']
+                            user[user_id]['music_duration'] = end- start
+                            user[user_id]['machine'].set_second(start, end, user[user_id]['music_duration'])
+                            push_audio_message(user_id, file_url, user[user_id]['music_duration'], user[user_id]['tmp_music'],
+                                            ["如果需要使用 youtube 尋找音樂請輸入 YouTube ，也可以自行上傳音樂(電腦版限定)。"])
+                            user[user_id]['machine'].final_back()
+                            user[user_id]['avaliable'] = 1
+                            del user[user_id]
+                            continue
                         else:
                             result = event.message.text
                             result = result.split(',')
@@ -286,7 +316,7 @@ def webhook_handler():
                                 end = int(result[1])
                             except ValueError as e:
                                 send_text_message(event.reply_token,
-                                                ["音樂總長度為"+str(user[user_id]['music_duration'])+"秒",
+                                                ["音樂總長度為"+str(int(user[user_id]['music_duration']))+"秒",
                                                 "請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
                                                 "如果不需要剪歌，請輸入 不用 或 不需要。",
                                                 "如果想重新選擇，請輸入 從頭再來一次。"])
@@ -294,23 +324,25 @@ def webhook_handler():
                         response = user[user_id]['machine'].set_second(start, end, user[user_id]['music_duration'])
                         if response == 0:
                             send_text_message(event.reply_token,
-                                            ["音樂總長度為"+str(user[user_id]['music_duration'])+"秒",
+                                            ["音樂總長度為"+str(int(user[user_id]['music_duration']))+"秒",
                                             "請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
                                             "如果不需要剪歌，請輸入 不用 或 不需要。",
                                             "如果想重新選擇，請輸入 從頭再來一次。"])
                             continue
                         else:
+                            user[user_id]['avaliable'] = 0
                             send_text_message(event.reply_token, ["進行中，請稍等..."])
                             # 剪音樂
                             Cut(user[user_id]['tmp_music'], start*1000, end*1000, user[user_id]['output_music'])
                             user[user_id]['music_duration'] = end- start
-                            push_audio_message(event.reply_token, file_url, user[user_id]['music_duration'], user[user_id]['output_music'],
-                                            ["如果需要使用 youtube 尋找音樂請輸入 YouTube ，也可以自行上傳音樂。"])
+                            push_audio_message(user_id, file_url, user[user_id]['music_duration'], user[user_id]['output_music'],
+                                            ["如果需要使用 youtube 尋找音樂請輸入 YouTube ，也可以自行上傳音樂(電腦版限定)。"])
                             user[user_id]['machine'].final_back()
+                            user[user_id]['avaliable'] = 1
                             del user[user_id]
                             continue
             send_text_message(event.reply_token,
-                            ["音樂總長度為"+str(user[user_id]['music_duration'])+"秒",
+                            ["音樂總長度為"+str(int(user[user_id]['music_duration']))+"秒",
                             "請輸入想要剪的秒數範圍，請以半形逗號做為分隔",
                             "如果不需要剪歌，請輸入 不用 或 不需要。",
                             "如果想重新選擇，請輸入 從頭再來一次。"])
