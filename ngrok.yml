@@ -1,4 +1,4 @@
-authtoken: 1zja9dz8wB8mn2FFKoLa4pYZSNB_4DyqbkRpgTvNzLGJsDfze
+authtoken: "你自己的"
 tunnels:
   myapp-http:
     addr: 8000
