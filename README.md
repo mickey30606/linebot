@@ -30,6 +30,7 @@ pipenv shell
 
 #### Run Locally
 You can either setup https server or using `ngrok` as a proxy.
+You need to write your ngrok Authtoken in ngrok.yml file
 
 **`ngrok` would be used in the following instruction**
 
@@ -37,9 +38,12 @@ You can either setup https server or using `ngrok` as a proxy.
 ngrok start --config=./ngrok.yml --all
 ```
 
+
 After that, `ngrok` would generate a https URL.
 
 #### Run the sever
+
+Before running server, you need to enter the ngrok file link to .env file.
 
 ```sh
 python3 multiple_app.py
